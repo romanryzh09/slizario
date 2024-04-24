@@ -27,10 +27,11 @@ while True:
 
     for sock in players:
         try:
-            data = sock.recv(1024).decode()
-            print('Получил', data)
+            sock.send('LOL'.encode())
         except:
-            pass
+            players.remove(sock)
+            sock.close()
+            print('Сокет закрыт')
 
     time.sleep(1)
 
