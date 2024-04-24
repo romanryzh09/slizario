@@ -21,5 +21,14 @@ while True:
         new_socket.setblocking(False)
         players.append(new_socket)
 
+        for sock in players:
+            try:
+                data = sock.recv(1024).decode()
+                print('Получил', data)
+            except:
+                pass
+
+
     except BlockingIOError:
         pass
+
