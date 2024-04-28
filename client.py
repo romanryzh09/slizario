@@ -10,6 +10,10 @@ pygame.init()
 WIDTH = 800
 HEIGHT = 600
 
+CC = (WIDTH // 2, HEIGHT // 2)
+
+old = (0, 0)
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Бактерии')
 
@@ -18,7 +22,13 @@ while run:
     for event in pygame.event.get():
         if event == pygame.QUIT:
             run = False
-    sock.send('Привет'.encode())
+    if pygame.mouse.get_focused():
+        pos = pygame.mouse.get_pos()
+        vector = pos[0] - CC[0], pos[1] - CC[1]
+        if vector != old:
+            old = vector
+            msg = f"<{vector[0]}, {vector[1]}>"
+            sock.send(msg.encode())
 
     data = sock.recv(1024).decode()
     print('Получил:', data)
