@@ -27,11 +27,14 @@ while True:
 
     for sock in players:
         try:
-            sock.send('LOL'.encode())
-        except:
+            data = sock.recv(1024).decode()
+            print(f'Получил {data}')
+            # sock.send('Игра'.encode())
+        except Exception as e:
             players.remove(sock)
             sock.close()
             print('Сокет закрыт')
+            print(e)
 
     time.sleep(1)
 
