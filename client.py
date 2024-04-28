@@ -1,5 +1,6 @@
 import socket
 import pygame
+import math
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
@@ -14,6 +15,8 @@ CC = (WIDTH // 2, HEIGHT // 2)
 
 old = (0, 0)
 
+radius = 50
+
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Бактерии')
 
@@ -25,13 +28,24 @@ while run:
     if pygame.mouse.get_focused():
         pos = pygame.mouse.get_pos()
         vector = pos[0] - CC[0], pos[1] - CC[1]
+
+        lenv = math.sqrt(vector[0] ** 2 + vector[1] ** 2)
+        vector = vector[0] / lenv, vector[1] / lenv
+
+        if lenv <= radius:
+            vector = 0, 0
+
         if vector != old:
             old = vector
-            msg = f"<{vector[0]}, {vector[1]}>"
+            msg = f"<{vector[0]},{vector[1]}>\n"
             sock.send(msg.encode())
 
-    data = sock.recv(1024).decode()
-    print('Получил:', data)
+    # data = sock.recv(1024).decode()
+    # print('Получил:', data)
+
+    screen.fill('gray')
+    pygame.draw.circle(screen, (255, 0, 0), CC, radius)
+    pygame.display.update()
 
 
 
