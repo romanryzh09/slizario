@@ -5,6 +5,13 @@ import tkinter as tk
 from tkinter import ttk
 import tkinter.messagebox
 
+
+def scroll(event):
+    global color
+    color = combo.get()
+    style.configure('TCombobox', fieldbackground=color, background='white')
+
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 sock.connect(('localhost', 10000))
@@ -27,13 +34,13 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Бактерии')
 
 colors = ['Maroon', 'DarkRed', 'FireBrick', 'Red', 'Salmon', 'Tomato', 'Coral', 'OrangeRed', 'Chocolate', 'SandyBrown',
-         'DarkOrange', 'Orange', 'DarkGoldenrod', 'Goldenrod', 'Gold', 'Olive', 'Yellow', 'YellowGreen', 'GreenYellow',
-         'Chartreuse', 'LawnGreen', 'Green', 'Lime', 'Lime Green', 'SpringGreen', 'MediumSpringGreen', 'Turquoise',
-         'LightSeaGreen', 'MediumTurquoise', 'Teal', 'DarkCyan', 'Aqua', 'Cyan', 'Dark Turquoise', 'DeepSkyBlue',
-         'DodgerBlue', 'RoyalBlue', 'Navy', 'DarkBlue', 'MediumBlue']
+          'DarkOrange', 'Orange', 'DarkGoldenrod', 'Goldenrod', 'Gold', 'Olive', 'Yellow', 'YellowGreen', 'GreenYellow',
+          'Chartreuse', 'LawnGreen', 'Green', 'Lime', 'Lime Green', 'SpringGreen', 'MediumSpringGreen', 'Turquoise',
+          'LightSeaGreen', 'MediumTurquoise', 'Teal', 'DarkCyan', 'Aqua', 'Cyan', 'Dark Turquoise', 'DeepSkyBlue',
+          'DodgerBlue', 'RoyalBlue', 'Navy', 'DarkBlue', 'MediumBlue']
 
-name= ""
-color= ""
+name = ""
+color = ""
 
 root = tk.Tk()
 root.title('Логин')
@@ -42,16 +49,16 @@ root.geometry("300x200")
 style = ttk.Style()
 style.theme_use('combo')
 
-name_label = tk.Label(root, text= 'Введите свой никнейм:')
+name_label = tk.Label(root, text='Введите свой никнейм:')
 name_label.pack()
 row = tk.Entry(root, width=30, justify='center')
 row.pack()
-color_label = tk.Label(root, text= 'Выбери цвет:')
+color_label = tk.Label(root, text='Выбери цвет:')
 color_label.pack()
 combo = ttk.Combobox(root, values=colors, textvariable=color)
-combo.bind("<<ComboboxSelected>>",scroll)
+combo.bind("<<ComboboxSelected>>", scroll)
 combo.pack()
-name_btn = tk.Button(root, text='Зайти в игру', command= login)
+name_btn = tk.Button(root, text='Зайти в игру', command=login)
 name_btn.pack()
 
 run = True
