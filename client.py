@@ -12,6 +12,16 @@ def scroll(event):
     style.configure('TCombobox', fieldbackground=color, background='white')
 
 
+def login():
+    global name
+    name = row.get()
+    if name and color:
+        root.destroy()
+        root.quit()
+    else:
+        tk.messagebox.showerror('Ошибка', 'Ты не выбрал цвет или не ввел имя!')
+
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 sock.connect(('localhost', 10000))
