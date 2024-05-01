@@ -26,6 +26,7 @@ sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
 sock.connect(('localhost', 10000))
 
+
 pygame.init()
 
 WIDTH = 800
@@ -57,7 +58,7 @@ root.title('Логин')
 root.geometry("300x200")
 
 style = ttk.Style()
-style.theme_use('combo')
+style.theme_use('classic')
 
 name_label = tk.Label(root, text='Введите свой никнейм:')
 name_label.pack()
@@ -70,6 +71,9 @@ combo.bind("<<ComboboxSelected>>", scroll)
 combo.pack()
 name_btn = tk.Button(root, text='Зайти в игру', command=login)
 name_btn.pack()
+
+sock.send(('color:<' + name + ',' + color + '>').encode())
+root.mainloop()
 
 run = True
 while run:
@@ -95,9 +99,9 @@ while run:
     # print('Получил:', data)
 
     screen.fill('gray')
-    pygame.draw.circle(screen, (255, 0, 0), CC, radius)
+    pygame.draw.circle(screen, color, CC, radius)
     screen.blit(nickname, CC)
     pygame.display.update()
 
 pygame.quit()
-root.mainloop()
+
