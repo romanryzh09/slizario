@@ -67,20 +67,39 @@ while True:
         new_socket, addr = main_socket.accept()
         print('Подключился', addr)
         new_socket.setblocking(False)
-        players.append(new_socket)
+        player = Player("Имя", addr)
+        s.merge(player)
+        s.commit()
+        addr = f'({addr[0]}, {addr[1]})'
+        data = s.query(Player).filter(Player.address == addr)
+        for user in data:
+            player = LocalPlayer(user.id, "Имя", new_socket, addr)
+            players[user.id] = player
 
     except BlockingIOError:
         pass
 
-    for sock in players:
+    for id in list(players):
         try:
-            data = sock.recv(1024).decode()
+            data = players[id].sock.recv(1024).decode()
             print(f'Получил {data}')
             # sock.send('Игра'.encode())
         except Exception as e:
-            players.remove(sock)
-            sock.close()
-            print('Сокет закрыт')
-            print(e)
+            pass
+            # players.remove(sock)
+            # sock.close()
+            # print('Сокет закрыт')
+            # print(e)
+
+    for id in list(players):
+        try:
+            players[id].sock.send('Игра'.encode())
+        except Exception as e:
+            players[id].sock.close()
+            del players[id]
+            s.query(Player).filter(Player.id == id).delete()
+            s.commit()
+            print('Сокет закрыт(')
+
 
     time.sleep(1)
