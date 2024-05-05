@@ -5,6 +5,16 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import sessionmaker
+import pygame
+
+pygame.init()
+WIDTH_ROOM, HEIGHT_ROOM = 4000, 4000
+WIDTH_SERVER, HEIGHT_SERVER = 300, 300
+FPS = 100
+
+screen = pygame.display.set_mode((WIDTH_SERVER, HEIGHT_SERVER))
+pygame.display.set_caption("Сервер")
+clock = pygame.time.Clock()
 
 main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -62,7 +72,9 @@ print('Сокет создался')
 Base.metadata.create_all(engine)
 
 players = {}
-while True:
+server_works = True
+while server_works:
+    clock.tick(FPS)
     try:
         new_socket, addr = main_socket.accept()
         print('Подключился', addr)
@@ -100,6 +112,11 @@ while True:
             s.query(Player).filter(Player.id == id).delete()
             s.commit()
             print('Сокет закрыт(')
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            server_works = False
 
-
-    time.sleep(1)
+pygame.quit()
+main_socket.close()
+s.query(Player).delete()
+s.commit()
