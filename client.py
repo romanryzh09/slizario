@@ -1,6 +1,6 @@
+import math
 import socket
 import pygame
-import math
 import tkinter as tk
 from tkinter import ttk
 import tkinter.messagebox
@@ -22,27 +22,21 @@ def login():
         tk.messagebox.showerror('Ошибка', 'Ты не выбрал цвет или не ввел имя!')
 
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-sock.connect(('localhost', 10000))
-
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Настраиваем сокет
+sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # Отключаем пакетирование
+sock.connect(("localhost", 10000))
 
 pygame.init()
-
 WIDTH = 800
 HEIGHT = 600
-
 CC = (WIDTH // 2, HEIGHT // 2)
-
 old = (0, 0)
-
 radius = 50
 
-font = pygame.font.SysFont('calibri', 10)
-nickname = font.render('Litwiz1337', 1, (0, 0, 0))
-
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption('Бактерии')
+pygame.display.set_caption("Бактерии")
+
+font = pygame.font.SysFont('calibri', 10)
 
 colors = ['Maroon', 'DarkRed', 'FireBrick', 'Red', 'Salmon', 'Tomato', 'Coral', 'OrangeRed', 'Chocolate', 'SandyBrown',
           'DarkOrange', 'Orange', 'DarkGoldenrod', 'Goldenrod', 'Gold', 'Olive', 'Yellow', 'YellowGreen', 'GreenYellow',
@@ -75,33 +69,35 @@ name_btn.pack()
 sock.send(('color:<' + name + ',' + color + '>').encode())
 root.mainloop()
 
+nickname = font.render(name, 1, (0, 0, 0))
+
 run = True
 while run:
     for event in pygame.event.get():
-        if event == pygame.QUIT:
+        if event.type == pygame.QUIT:
             run = False
-    if pygame.mouse.get_focused():
-        pos = pygame.mouse.get_pos()
-        vector = pos[0] - CC[0], pos[1] - CC[1]
+        if pygame.mouse.get_focused():
+            pos = pygame.mouse.get_pos()
+            vector = pos[0] - CC[0], pos[1] - CC[1]
 
-        lenv = math.sqrt(vector[0] ** 2 + vector[1] ** 2)
-        vector = vector[0] / lenv, vector[1] / lenv
+            lenv = math.sqrt(vector[0] ** 2 + vector[1] ** 2)
+            vector = vector[0] / lenv, vector[1] / lenv
 
-        if lenv <= radius:
-            vector = 0, 0
+            if lenv <= radius:
+                vector = 0, 0
 
-        if vector != old:
-            old = vector
-            msg = f"<{vector[0]},{vector[1]}>\n"
-            sock.send(msg.encode())
+            if vector != old:
+                old = vector
+                msg = f"<{vector[0]},{vector[1]}>"
+                sock.send(msg.encode())
 
-    # data = sock.recv(1024).decode()
-    # print('Получил:', data)
+    # Получаем
+    data = sock.recv(1024).decode()
+    print("Получил:", data)
 
+    # Рисуем новое поле
     screen.fill('gray')
     pygame.draw.circle(screen, color, CC, radius)
-    screen.blit(nickname, CC)
     pygame.display.update()
 
 pygame.quit()
-

@@ -7,24 +7,13 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import sessionmaker
 import pygame
 
-pygame.init()
-WIDTH_ROOM, HEIGHT_ROOM = 4000, 4000
-WIDTH_SERVER, HEIGHT_SERVER = 300, 300
-FPS = 100
+main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Настраиваем сокет
+main_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)  # Отключаем пакетирование
+main_socket.bind(("localhost", 10000))  # IP и порт привязываем к порту
+main_socket.setblocking(False)  # Непрерывность, не ждём ответа
+main_socket.listen(5)  # Прослушка входящих соединений, 5 одновременных подключений
+print("Сокет создался")
 
-screen = pygame.display.set_mode((WIDTH_SERVER, HEIGHT_SERVER))
-pygame.display.set_caption("Сервер")
-clock = pygame.time.Clock()
-
-main_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-main_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-
-main_socket.bind(('localhost', 10000))
-
-main_socket.setblocking(False)
-
-main_socket.listen(5)
 
 DATABASE_URL = "postgresql+psycopg2://postgres:11062009Ryzhinkov@localhost/bacteria"
 engine = create_engine(DATABASE_URL)
@@ -32,22 +21,33 @@ Session = sessionmaker(bind=engine)
 Base = declarative_base()
 s = Session()
 
+# Настройка констант для pygame
+pygame.init()
+WIDTH_ROOM, HEIGHT_ROOM = 4000, 4000
+WIDTH_SERVER, HEIGHT_SERVER = 300, 300
+FPS = 60
+
+# Создание окна сервера
+screen = pygame.display.set_mode((WIDTH_SERVER, HEIGHT_SERVER))
+pygame.display.set_caption("Сервер")
+clock = pygame.time.Clock()
+
 
 def find(vector: str):
     first = None
     for num, sign in enumerate(vector):
-        if sign == '<':
+        if sign == "<":
             first = num
-        if sign == '>' and first is not None:
+        if sign == ">" and first is not None:
             second = num
-            result = vector[first + 1:second]
-            result = result.split(',')
-            result = map(int, result)
+            result = list(map(float, vector[first + 1:second].split(",")))
             return result
     return ""
 
+
+# Декларативный класс таблицы игроков
 class Player(Base):
-    __tablename__ = 'gamers'
+    __tablename__ = "gamers"
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(250))
     address = Column(String)
@@ -55,15 +55,19 @@ class Player(Base):
     y = Column(Integer, default=500)
     size = Column(Integer, default=50)
     errors = Column(Integer, default=0)
-    abs_speed = Column(Integer, default=2)
-    speed_x = Column(Integer, default=2)
-    speed_y = Column(Integer, default=2)
+    abs_speed = Column(Integer, default=1)
+    speed_x = Column(Integer, default=0)
+    speed_y = Column(Integer, default=0)
+    color = Column(String(250), default='red')
+    w_vision = Column(Integer, default=800)
+    h_vision = Column(Integer, default=600)
 
     def __init__(self, name, address):
         self.name = name
         self.address = address
 
 
+# Локальный класс таблицы игроков
 class LocalPlayer:
     def __init__(self, id, name, sock, addr):
         self.id = id
@@ -78,6 +82,9 @@ class LocalPlayer:
         self.abs_speed = 1
         self.speed_x = 0
         self.speed_y = 0
+        self.color = 'red'
+        self.w_vision = 800
+        self.h_vision = 600
 
     def update(self):
         self.x += self.speed_x
@@ -92,25 +99,24 @@ class LocalPlayer:
             self.speed_x = vector[0]
             self.speed_y = vector[1]
 
-
-print('Сокет создался')
-
 Base.metadata.create_all(engine)
 # Base.metadata.drop_all(engine)
+
 
 players = {}
 server_works = True
 while server_works:
     clock.tick(FPS)
     try:
-        new_socket, addr = main_socket.accept()
+        # проверяем желающих войти в игру
+        new_socket, addr = main_socket.accept()  # принимаем входящие
         print('Подключился', addr)
         new_socket.setblocking(False)
         player = Player("Имя", addr)
         s.merge(player)
         s.commit()
 
-        addr = f'({addr[0]}, {addr[1]})'
+        addr = f'({addr[0]},{addr[1]})'
         data = s.query(Player).filter(Player.address == addr)
         for user in data:
             player = LocalPlayer(user.id, "Имя", new_socket, addr)
@@ -119,28 +125,28 @@ while server_works:
     except BlockingIOError:
         pass
 
+    # Считываем команды игроков
     for id in list(players):
         try:
             data = players[id].sock.recv(1024).decode()
-            print(f'Получил {data}')
+            print("Получил", data)
             players[id].change_speed(data)
-            # sock.send('Игра'.encode())
-        except Exception as e:
+        except:
             pass
-            # players.remove(sock)
-            # sock.close()
-            # print('Сокет закрыт')
-            # print(e)
 
+    # Отправляем статус игрового поля
     for id in list(players):
         try:
-            players[id].sock.send('Игра'.encode())
-        except Exception as e:
+            players[id].sock.send("Игра".encode())
+        except:
             players[id].sock.close()
             del players[id]
+            # Так же удаляем строчку из БД
             s.query(Player).filter(Player.id == id).delete()
             s.commit()
-            print('Сокет закрыт(')
+            print("Сокет закрыт")
+
+    # Отрисовываем серверное окно
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             server_works = False
@@ -151,14 +157,13 @@ while server_works:
         x = player.x * WIDTH_SERVER // WIDTH_ROOM
         y = player.y * HEIGHT_SERVER // HEIGHT_ROOM
         size = player.size * WIDTH_SERVER // WIDTH_ROOM
-        pygame.draw.circle(screen, "yellow2", (x, y), size)
+        pygame.draw.circle(screen, player.color, (x, y), size)
 
     for id in list(players):
         player = players[id]
         players[id].update()
 
     pygame.display.update()
-    pygame.display.flip()
 
 pygame.quit()
 main_socket.close()
