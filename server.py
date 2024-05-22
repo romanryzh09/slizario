@@ -14,7 +14,6 @@ main_socket.setblocking(False)  # Непрерывность, не ждём от
 main_socket.listen(5)  # Прослушка входящих соединений, 5 одновременных подключений
 print("Сокет создался")
 
-
 DATABASE_URL = "postgresql+psycopg2://postgres:11062009Ryzhinkov@localhost/bacteria"
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
@@ -41,6 +40,18 @@ def find(vector: str):
         if sign == ">" and first is not None:
             second = num
             result = list(map(float, vector[first + 1:second].split(",")))
+            return result
+    return ""
+
+
+def find_color(info: str):
+    first = None
+    for num, sign in enumerate(info):
+        if sign == '<':
+            first = num
+        if sign == '>' and first is not None:
+            second = num
+            result = info[first + 1:second].split(',')
             return result
     return ""
 
@@ -99,6 +110,34 @@ class LocalPlayer:
             self.speed_x = vector[0]
             self.speed_y = vector[1]
 
+    def sync(self):
+        self.db.size = self.size
+        self.db.abs_speed = self.abs_speed
+        self.db.speed_x = self.speed_x
+        self.db.speed_y = self.speed_y
+        self.db.errors = self.errors
+        self.db.x = self.x
+        self.db.y = self.y
+        self.db.color = self.color
+        self.db.w_vision = self.w_vision
+        self.db.h_vision = self.h_vision
+        s.merge(self.db)
+        s.commit()
+
+    def load(self):
+        self.size = self.db.size
+        self.abs_speed = self.db.abs_speed
+        self.speed_x = self.db.speed_x
+        self.speed_y = self.db.speed_y
+        self.errors = self.db.errors
+        self.x = self.db.x
+        self.y = self.db.y
+        self.color = self.db.color
+        self.w_vision = self.db.w_vision
+        self.h_vision = self.db.h_vision
+        return self
+
+
 Base.metadata.create_all(engine)
 # Base.metadata.drop_all(engine)
 
@@ -112,14 +151,19 @@ while server_works:
         new_socket, addr = main_socket.accept()  # принимаем входящие
         print('Подключился', addr)
         new_socket.setblocking(False)
-        player = Player("Имя", addr)
+        login = new_socket.recv(1024).decode()
+        player = Player('Имя', addr)
+        if login.startswith("color"):
+            data = find_color(login[6:])
+            player.name, player.color = data
+
         s.merge(player)
         s.commit()
 
         addr = f'({addr[0]},{addr[1]})'
         data = s.query(Player).filter(Player.address == addr)
         for user in data:
-            player = LocalPlayer(user.id, "Имя", new_socket, addr)
+            player = LocalPlayer(user.id, "Имя", new_socket, addr).load()
             players[user.id] = player
 
     except BlockingIOError:
@@ -134,10 +178,46 @@ while server_works:
         except:
             pass
 
-    # Отправляем статус игрового поля
+    visible_bacteries = {}
+    for id in list(players):
+        visible_bacteries[id] = []
+
+    pairs = list(players.items())
+    for i in range(0, len(pairs)):
+        for j in range(i + 1, len(pairs)):
+            hero_1: Player = pairs[i][1]
+            hero_2: Player = pairs[j][1]
+
+            dist_x = hero_2.x - hero_1.x
+            dist_y = hero_2.y - hero_1.y
+
+            if abs(dist_x) <= hero_1.w_vision // 2 + hero_2.size \
+                    and abs(dist_y) <= hero_1.h_vision // 2 + hero_2.size:
+                x_ = str(round(dist_x))
+                y_ = str(round(dist_y))
+                size_ = str(round(hero_2.size))
+                color_ = hero_2.color
+
+                data = x_ + " " + y_ + " " + size_ + " " + color_
+                visible_bacteries[hero_1.id].append(data)
+
+            if abs(dist_x) <= hero_2.w_vision // 2 + hero_1.size \
+                    and abs(dist_y) <= hero_2.h_vision // 2 + hero_1.size:
+                x_ = str(round(-dist_x))
+                y_ = str(round(-dist_y))
+                size_ = str(round(hero_1.size))
+                color_ = hero_1.color
+
+                data = x_ + " " + y_ + " " + size_ + " " + color_
+                visible_bacteries[hero_2.id].append(data)
+
+    for id in list(players):
+        visible_bacteries[id] = '<' + ','.join(visible_bacteries[id]) + '>'
+
+        # Отправляем статус игрового поля
     for id in list(players):
         try:
-            players[id].sock.send("Игра".encode())
+            players[id].sock.send(visible_bacteries[id].encode())
         except:
             players[id].sock.close()
             del players[id]
